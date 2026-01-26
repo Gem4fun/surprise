@@ -194,9 +194,9 @@
             document.getElementById("progress-bar").style.width = totalProgress + "%";
             document.getElementById("percent-label").innerText = totalProgress.toFixed(6) + "%";
 
-            // ROTACJA KOMUNIKATÓW (Co 10 sekund)
+            // ROTACJA KOMUNIKATÓW (Co 20 sekund)
             const currentSec = new Date().getSeconds();
-            if (currentSec % 10 === 0 && currentSec !== lastUpdateSec) {
+            if (currentSec % 20 === 0 && currentSec !== lastUpdateSec) {
                 lastUpdateSec = currentSec;
                 
                 const randomMsg = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
