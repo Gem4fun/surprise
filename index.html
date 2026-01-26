@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operacja: Zmiana Kodowania na 4.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap');
+        
+        body {
+            font-family: 'Space+Grotesk', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        .gradient-text {
+            background: linear-gradient(90deg, #38bdf8, #818cf8, #fb7185);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .progress-container {
+            height: 24px;
+            background: #334155;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            transition: width 1s ease-in-out;
+        }
+
+        .floating {
+            animation: floating 3s ease-in-out infinite;
+        }
+
+        @keyframes floating {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .number-glitch {
+            display: inline-block;
+            font-weight: 700;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-2xl w-full space-y-8 text-center">
+        <!-- Nagłówek -->
+        <header class="space-y-2">
+            <h1 class="text-4xl md:text-6xl font-bold gradient-text mb-4">
+                System Młodość 3.x
+            </h1>
+            <p class="text-slate-400 text-lg">
+                Trwa krytyczna aktualizacja do wersji <span class="text-white font-bold">4.0</span>
+            </p>
+        </header>
+
+        <!-- Pasek Postępu -->
+        <div class="card p-6 rounded-2xl shadow-2xl">
+            <div class="flex justify-between mb-2 text-sm font-medium">
+                <span>Status Migracji: W toku...</span>
+                <span id="percent-label">0%</span>
+            </div>
+            <div class="progress-container mb-4">
+                <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
+            </div>
+            <p id="funny-status" class="text-xs text-slate-500 italic">
+                Pobieranie dodatkowych zasobów: "Akceptacja spania o 22:00"...
+            </p>
+        </div>
+
+        <!-- Główny Licznik (W minutach) -->
+        <div class="grid grid-cols-1 gap-6">
+            <div class="card p-8 rounded-3xl relative overflow-hidden group">
+                <div class="absolute -right-4 -top-4 text-8xl opacity-5 font-bold select-none group-hover:opacity-10 transition-opacity">
+                    40
+                </div>
+                
+                <h2 class="text-slate-400 uppercase tracking-widest text-sm mb-4 font-bold">
+                    Do wygaśnięcia gwarancji na kolana pozostało:
+                </h2>
+                
+                <div class="text-5xl md:text-7xl font-mono font-bold tracking-tighter mb-4" id="minute-counter">
+                    0000000
+                </div>
+                
+                <p class="text-xl text-indigo-300">
+                    minut(y) cierpliwości
+                </p>
+            </div>
+        </div>
+
+        <!-- Sekcja zabawnych statystyk -->
+        <div class="grid grid-cols-2 gap-4">
+            <div class="card p-4 rounded-xl text-left">
+                <p class="text-xs text-slate-500 uppercase">Symptomy</p>
+                <p id="symptom-text" class="text-sm font-medium">Brak danych...</p>
+            </div>
+            <div class="card p-4 rounded-xl text-left">
+                <p class="text-xs text-slate-500 uppercase">Zalecenie</p>
+                <p id="advice-text" class="text-sm font-medium">Kupno wygodnych kapci.</p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="text-slate-500 text-sm">
+            <p>Uwaga: Po przekroczeniu 40-tki system może wymagać częstszego serwisowania (kawa, magnez, drzemka).</p>
+        </footer>
+    </div>
+
+    <script>
+        // DATA URODZIN: 28 listopada 2026
+        const targetDate = new Date("November 28, 2026 00:00:00").getTime();
+        
+        // Data rozpoczęcia (np. 30 urodziny lub dzisiaj - użyjemy daty dzisiejszej jako startu dla paska)
+        const startDate = new Date("November 28, 1986").getTime(); // Rok urodzenia 
+        const fourtyYearsInMs = 40 * 365.25 * 24 * 60 * 60 * 1000;
+        const birthDate = new Date("November 28, 1986").getTime();
+
+        const funnyMessages = [
+            "Kalibrowanie narzekania na pogodę...",
+            "Optymalizacja dźwięków przy wstawaniu z fotela...",
+            "Instalowanie sterowników do czytania etykiet w sklepie...",
+            "Usuwanie zbędnych plików: 'Spontaniczne imprezy do rana'...",
+            "Sprawdzanie poziomu zadowolenia z zakupu nowego mopa...",
+            "Synchronizacja z lokalnym kołem gospodyń...",
+            "Aktualizacja bazy danych: 'Leki, które musisz brać'..."
+        ];
+
+        const symptoms = [
+            "Nagła ochota na herbatę",
+            "Ekscytacja nową gąbką do naczyń",
+            "Mówienie 'Oho!' przy siadaniu",
+            "Pamiętanie czasów bez internetu",
+            "Krytykowanie dzisiejszej młodzieży"
+        ];
+
+        function updateCounter() {
+            const now = new Date().getTime();
+            const distance = targetDate - now;
+
+            if (distance < 0) {
+                document.getElementById("minute-counter").innerHTML = "STATUS: 4.0";
+                document.getElementById("funny-status").innerHTML = "System zaktualizowany. Witaj w klubie!";
+                return;
+            }
+
+            // Oblicz minuty
+            const minutes = Math.floor(distance / (1000 * 60));
+            
+            // Formatowanie numeru z separatorami
+            document.getElementById("minute-counter").innerText = minutes.toLocaleString('pl-PL');
+
+            // Oblicz postęp życia do 40-tki
+            const totalDuration = targetDate - birthDate;
+            const elapsed = now - birthDate;
+            const progress = (elapsed / totalDuration) * 100;
+            
+            document.getElementById("progress-bar").style.width = progress + "%";
+            document.getElementById("percent-label").innerText = progress.toFixed(4) + "%";
+
+            // Zmieniaj zabawny status co jakiś czas
+            if (minutes % 10 === 0) {
+                const randomMsg = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
+                const randomSymptom = symptoms[Math.floor(Math.random() * symptoms.length)];
+                document.getElementById("funny-status").innerText = randomMsg;
+                document.getElementById("symptom-text").innerText = randomSymptom;
+            }
+        }
+
+        // Pierwsze wywołanie
+        updateCounter();
+        // Aktualizacja co sekundę (żeby minuty się zmieniały płynnie jeśli trzeba, ale wystarczy co minutę)
+        setInterval(updateCounter, 1000);
+    </script>
+</body>
+</html>
