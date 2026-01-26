@@ -38,22 +38,24 @@
         .progress-bar {
             height: 100%;
             background: linear-gradient(90deg, #38bdf8, #818cf8);
-            transition: width 1s ease-in-out;
+            transition: width 1s linear;
         }
 
-        .floating {
-            animation: floating 3s ease-in-out infinite;
+        /* Mały pasek aktywności żeby było widać że strona działa */
+        .heartbeat-bar {
+            height: 4px;
+            background: #38bdf8;
+            width: 0%;
+            transition: width 0.1s linear;
         }
 
-        @keyframes floating {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
-        .number-glitch {
-            display: inline-block;
-            font-weight: 700;
-            position: relative;
+        .blinker {
+            animation: pulse 1s infinite;
         }
     </style>
 </head>
@@ -66,21 +68,21 @@
                 System Młodość 3.x
             </h1>
             <p class="text-slate-400 text-lg">
-                Trwa krytyczna aktualizacja do wersji <span class="text-white font-bold">4.0</span>
+                Trwa krytyczna aktualizacja do wersji <span class="text-white font-bold">4.0</span> <span class="blinker">_</span>
             </p>
         </header>
 
-        <!-- Pasek Postępu -->
+        <!-- Pasek Postępu Głównego (Życiowego) -->
         <div class="card p-6 rounded-2xl shadow-2xl">
             <div class="flex justify-between mb-2 text-sm font-medium">
-                <span>Status Migracji: W toku...</span>
-                <span id="percent-label">0%</span>
+                <span id="system-task">Przygotowanie do migracji danych...</span>
+                <span id="percent-label" class="font-mono">0%</span>
             </div>
             <div class="progress-container mb-4">
                 <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
             </div>
             <p id="funny-status" class="text-xs text-slate-500 italic">
-                Pobieranie dodatkowych zasobów: "Akceptacja spania o 22:00"...
+                Inicjalizacja modułu "Zrozumienie dlaczego rodzice narzekali na kręgosłup"...
             </p>
         </div>
 
@@ -91,46 +93,47 @@
                     40
                 </div>
                 
-                <h2 class="text-slate-400 uppercase tracking-widest text-sm mb-4 font-bold">
-                    Do wygaśnięcia gwarancji na kolana pozostało:
+                <h2 class="text-slate-400 uppercase tracking-widest text-xs mb-4 font-bold">
+                    Do przejścia na nową architekturę pozostało:
                 </h2>
                 
-                <div class="text-5xl md:text-7xl font-mono font-bold tracking-tighter mb-4" id="minute-counter">
-                    0000000
+                <div class="text-5xl md:text-7xl font-mono font-bold tracking-tighter mb-2" id="minute-counter">
+                    0 000 000
                 </div>
                 
-                <p class="text-xl text-indigo-300">
+                <p class="text-xl text-indigo-300 mb-4">
                     minut(y) cierpliwości
                 </p>
+
+                <!-- Pasek "aktywności" - pokazuje upływające sekundy wewnątrz minuty -->
+                <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+                    <div id="second-pulse" class="heartbeat-bar"></div>
+                </div>
             </div>
         </div>
 
         <!-- Sekcja zabawnych statystyk -->
         <div class="grid grid-cols-2 gap-4">
-            <div class="card p-4 rounded-xl text-left">
-                <p class="text-xs text-slate-500 uppercase">Symptomy</p>
-                <p id="symptom-text" class="text-sm font-medium">Brak danych...</p>
+            <div class="card p-4 rounded-xl text-left border-l-4 border-l-sky-500">
+                <p class="text-xs text-slate-500 uppercase font-bold">Symptom Wykryty</p>
+                <p id="symptom-text" class="text-sm font-medium mt-1 text-sky-200">Analiza...</p>
             </div>
-            <div class="card p-4 rounded-xl text-left">
-                <p class="text-xs text-slate-500 uppercase">Zalecenie</p>
-                <p id="advice-text" class="text-sm font-medium">Kupno wygodnych kapci.</p>
+            <div class="card p-4 rounded-xl text-left border-l-4 border-l-rose-500">
+                <p class="text-xs text-slate-500 uppercase font-bold">Zalecenie Systemu</p>
+                <p id="advice-text" class="text-sm font-medium mt-1 text-rose-200">Czekaj...</p>
             </div>
         </div>
 
         <!-- Footer -->
-        <footer class="text-slate-500 text-sm">
-            <p>Uwaga: Po przekroczeniu 40-tki system może wymagać częstszego serwisowania (kawa, magnez, drzemka).</p>
+        <footer class="text-slate-600 text-xs">
+            <p>Uwaga: Po 28.11.2026 system może wymagać częstszego resetowania (czyt. drzemka po obiedzie).</p>
         </footer>
     </div>
 
     <script>
-        // DATA URODZIN: 28 listopada 2026
+        // KONFIGURACJA
         const targetDate = new Date("November 28, 2026 00:00:00").getTime();
-        
-        // Data rozpoczęcia (np. 30 urodziny lub dzisiaj - użyjemy daty dzisiejszej jako startu dla paska)
-        const startDate = new Date("November 28, 1986").getTime(); // Rok urodzenia 
-        const fourtyYearsInMs = 40 * 365.25 * 24 * 60 * 60 * 1000;
-        const birthDate = new Date("November 28, 1986").getTime();
+        const birthDate = new Date("November 28, 1986").getTime(); // Założenie roku 1986 dla 40-tki w 2026
 
         const funnyMessages = [
             "Kalibrowanie narzekania na pogodę...",
@@ -139,7 +142,9 @@
             "Usuwanie zbędnych plików: 'Spontaniczne imprezy do rana'...",
             "Sprawdzanie poziomu zadowolenia z zakupu nowego mopa...",
             "Synchronizacja z lokalnym kołem gospodyń...",
-            "Aktualizacja bazy danych: 'Leki, które musisz brać'..."
+            "Aktualizacja bazy danych: 'Leki, które musisz brać'...",
+            "Pobieranie modułu: 'Wiedza o gatunkach herbat'...",
+            "Skanowanie w poszukiwaniu siwych włosów (Błąd: Limit przekroczony)..."
         ];
 
         const symptoms = [
@@ -147,8 +152,21 @@
             "Ekscytacja nową gąbką do naczyń",
             "Mówienie 'Oho!' przy siadaniu",
             "Pamiętanie czasów bez internetu",
-            "Krytykowanie dzisiejszej młodzieży"
+            "Krytykowanie dzisiejszej młodzieży",
+            "Zasypianie na filmach o 21:00",
+            "Wiedza co to jest 'płyn do płukania'"
         ];
+
+        const advices = [
+            "Kupno wygodnych kapci.",
+            "Inwestycja w maść końską.",
+            "Zapisanie się na jogę dla kręgosłupa.",
+            "Sprawdzenie promocji na witaminy.",
+            "Ograniczenie głośnej muzyki po 20:00.",
+            "Zakup poduszki ortopedycznej."
+        ];
+
+        let lastUpdateSec = -1;
 
         function updateCounter() {
             const now = new Date().getTime();
@@ -156,37 +174,44 @@
 
             if (distance < 0) {
                 document.getElementById("minute-counter").innerHTML = "STATUS: 4.0";
-                document.getElementById("funny-status").innerHTML = "System zaktualizowany. Witaj w klubie!";
+                document.getElementById("funny-status").innerHTML = "System zaktualizowany. Witaj w klubie 40-latek!";
                 return;
             }
 
-            // Oblicz minuty
+            // GŁÓWNY LICZNIK MINUT
             const minutes = Math.floor(distance / (1000 * 60));
-            
-            // Formatowanie numeru z separatorami
             document.getElementById("minute-counter").innerText = minutes.toLocaleString('pl-PL');
 
-            // Oblicz postęp życia do 40-tki
+            // PASEK SEKUND (żeby widać było ruch)
+            const secondsInMinute = Math.floor((distance % (1000 * 60)) / 1000);
+            const progressSec = ((60 - secondsInMinute) / 60) * 100;
+            document.getElementById("second-pulse").style.width = progressSec + "%";
+
+            // PASEK PROGRESU ŻYCIOWEGO
             const totalDuration = targetDate - birthDate;
             const elapsed = now - birthDate;
-            const progress = (elapsed / totalDuration) * 100;
-            
-            document.getElementById("progress-bar").style.width = progress + "%";
-            document.getElementById("percent-label").innerText = progress.toFixed(4) + "%";
+            const totalProgress = (elapsed / totalDuration) * 100;
+            document.getElementById("progress-bar").style.width = totalProgress + "%";
+            document.getElementById("percent-label").innerText = totalProgress.toFixed(6) + "%";
 
-            // Zmieniaj zabawny status co jakiś czas
-            if (minutes % 10 === 0) {
+            // ROTACJA KOMUNIKATÓW (Co 10 sekund)
+            const currentSec = new Date().getSeconds();
+            if (currentSec % 10 === 0 && currentSec !== lastUpdateSec) {
+                lastUpdateSec = currentSec;
+                
                 const randomMsg = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
                 const randomSymptom = symptoms[Math.floor(Math.random() * symptoms.length)];
+                const randomAdvice = advices[Math.floor(Math.random() * advices.length)];
+                
                 document.getElementById("funny-status").innerText = randomMsg;
                 document.getElementById("symptom-text").innerText = randomSymptom;
+                document.getElementById("advice-text").innerText = randomAdvice;
             }
         }
 
-        // Pierwsze wywołanie
+        // Pierwsze wywołanie i interwał
         updateCounter();
-        // Aktualizacja co sekundę (żeby minuty się zmieniały płynnie jeśli trzeba, ale wystarczy co minutę)
-        setInterval(updateCounter, 1000);
+        setInterval(updateCounter, 100); // Częstsze odświeżanie dla płynności pasków
     </script>
 </body>
 </html>
