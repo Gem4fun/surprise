@@ -5,19 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Operacja: Zmiana Kodowania na 4.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap');
-        
         body {
-            font-family: 'Space+Grotesk', sans-serif;
+            font-family: 'Space Grotesk', sans-serif;
             background-color: #0f172a;
             color: #f8fafc;
             overflow-x: hidden;
         }
+        .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
 
         .gradient-text {
             background: linear-gradient(90deg, #38bdf8, #818cf8, #fb7185);
             -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gradient-text-gold {
+            background: linear-gradient(90deg, #fbbf24, #fb7185, #c084fc);
+            -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -34,14 +43,11 @@
             overflow: hidden;
             position: relative;
         }
-
         .progress-bar {
             height: 100%;
             background: linear-gradient(90deg, #38bdf8, #818cf8);
             transition: width 1s linear;
         }
-
-        /* Mały pasek aktywności żeby było widać że strona działa */
         .heartbeat-bar {
             height: 4px;
             background: #38bdf8;
@@ -49,169 +55,543 @@
             transition: width 0.1s linear;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .blinker { animation: pulse 1s infinite; }
 
-        .blinker {
-            animation: pulse 1s infinite;
-        }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        .fade-up { animation: fadeUp .35s ease-out both; }
+
+        @keyframes pop { 0% { transform: scale(.8); opacity: 0; } 60% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
+        .pop { animation: pop .6s cubic-bezier(.2,.9,.3,1.2) both; }
+
+        .unit-switch { cursor: pointer; user-select: none; }
+        .unit-switch:active { transform: scale(.98); }
+
+        .num { font-variant-numeric: tabular-nums; word-break: break-all; }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="min-h-screen flex items-center justify-center p-4 py-10">
 
-    <div class="max-w-2xl w-full space-y-8 text-center">
-        <!-- Nagłówek -->
+    <!-- ===================== WIDOK PRZED 40-TKĄ ===================== -->
+    <div id="view-pre" class="max-w-3xl w-full space-y-8 text-center hidden">
         <header class="space-y-2">
-            <h1 class="text-4xl md:text-6xl font-bold gradient-text mb-4">
-                System Młodość 3.x
-            </h1>
+            <h1 class="text-4xl md:text-6xl font-bold gradient-text mb-4">System Młodość 3.x</h1>
             <p class="text-slate-400 text-lg">
                 Trwa krytyczna aktualizacja do wersji <span class="text-white font-bold">4.0</span> <span class="blinker">_</span>
             </p>
         </header>
 
-        <!-- Pasek Postępu Głównego (Życiowego) -->
+        <!-- Pasek postępu życiowego -->
         <div class="card p-6 rounded-2xl shadow-2xl">
             <div class="flex justify-between mb-2 text-sm font-medium">
-                <span id="system-task">Przygotowanie do migracji danych...</span>
+                <span>Postęp instalacji wersji 4.0</span>
                 <span id="percent-label" class="font-mono">0%</span>
             </div>
             <div class="progress-container mb-4">
                 <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
             </div>
             <p id="funny-status" class="text-xs text-slate-500 italic">
-                Inicjalizacja modułu "Zrozumienie dlaczego rodzice narzekali na kręgosłup"...
+                Inicjalizacja modułu „Zrozumienie, dlaczego rodzice narzekali na kręgosłup”...
             </p>
         </div>
 
-        <!-- Główny Licznik (W minutach) -->
-        <div class="grid grid-cols-1 gap-6">
-            <div class="card p-8 rounded-3xl relative overflow-hidden group">
-                <div class="absolute -right-4 -top-4 text-8xl opacity-5 font-bold select-none group-hover:opacity-10 transition-opacity">
-                    40
-                </div>
-                
-                <h2 class="text-slate-400 uppercase tracking-widest text-xs mb-4 font-bold">
-                    Do przejścia na nową architekturę pozostało:
-                </h2>
-                
-                <div class="text-5xl md:text-7xl font-mono font-bold tracking-tighter mb-2" id="minute-counter">
-                    0 000 000
-                </div>
-                
-                <p class="text-xl text-indigo-300 mb-4">
-                    minut(y) cierpliwości
-                </p>
-
-                <!-- Pasek "aktywności" - pokazuje upływające sekundy wewnątrz minuty -->
-                <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
-                    <div id="second-pulse" class="heartbeat-bar"></div>
-                </div>
+        <!-- Główny licznik (klik = zmiana jednostki) -->
+        <div id="main-counter-card" class="card p-8 rounded-3xl relative overflow-hidden group unit-switch" title="Kliknij, aby zmienić jednostkę">
+            <div class="absolute -right-4 -top-4 text-8xl opacity-5 font-bold select-none group-hover:opacity-10 transition-opacity">40</div>
+            <h2 class="text-slate-400 uppercase tracking-widest text-xs mb-4 font-bold">Do przejścia na nową architekturę pozostało:</h2>
+            <div class="text-5xl md:text-7xl font-mono font-bold tracking-tighter mb-2 num" id="minute-counter">—</div>
+            <p class="text-xl text-indigo-300 mb-4" id="unit-label">minut cierpliwości</p>
+            <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+                <div id="second-pulse" class="heartbeat-bar"></div>
             </div>
+            <p class="text-[11px] text-slate-500 mt-3">↻ kliknij, aby przeliczyć na inną jednostkę</p>
         </div>
 
-        <!-- Sekcja zabawnych statystyk -->
+        <!-- Symptomy / zalecenia -->
         <div class="grid grid-cols-2 gap-4">
             <div class="card p-4 rounded-xl text-left border-l-4 border-l-sky-500">
-                <p class="text-xs text-slate-500 uppercase font-bold">Symptom Wykryty</p>
-                <p id="symptom-text" class="text-sm font-medium mt-1 text-sky-200">Analiza...</p>
+                <p class="text-xs text-slate-500 uppercase font-bold">Symptom wykryty</p>
+                <p id="symptom-text" class="text-sm font-medium mt-1 text-sky-200 fade-up">Analiza...</p>
             </div>
             <div class="card p-4 rounded-xl text-left border-l-4 border-l-rose-500">
-                <p class="text-xs text-slate-500 uppercase font-bold">Zalecenie Systemu</p>
-                <p id="advice-text" class="text-sm font-medium mt-1 text-rose-200">Czekaj...</p>
+                <p class="text-xs text-slate-500 uppercase font-bold">Zalecenie systemu</p>
+                <p id="advice-text" class="text-sm font-medium mt-1 text-rose-200 fade-up">Czekaj...</p>
             </div>
         </div>
 
-        <!-- Footer -->
+        <!-- Przelicznik: pozostały czas -->
+        <section class="space-y-3">
+            <h2 class="text-slate-400 uppercase tracking-widest text-xs font-bold">Przelicznik: do aktualizacji zostało jeszcze</h2>
+            <div id="grid-left-pre" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+        </section>
+
+        <!-- Przebieg -->
+        <section class="space-y-3">
+            <h2 class="text-slate-400 uppercase tracking-widest text-xs font-bold">Przebieg systemu w wersji 3.x</h2>
+            <div id="grid-life-pre" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+        </section>
+
         <footer class="text-slate-600 text-xs">
-            <p>Uwaga: Po 28.11.2026 system może wymagać częstszego resetowania (czyt. drzemka po obiedzie).</p>
+            <p id="pre-footer">Uwaga: po aktualizacji system może wymagać częstszego resetowania (czyt. drzemka po obiedzie).</p>
+        </footer>
+    </div>
+
+    <!-- ===================== INSTALATOR (moment przejścia) ===================== -->
+    <div id="installer" class="hidden fixed inset-0 z-50 bg-slate-950/95 flex items-center justify-center p-4">
+        <div class="w-full max-w-2xl card rounded-2xl p-5 text-left shadow-2xl">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+                <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                <span class="ml-3 text-xs text-slate-400 font-mono">upgrade — mlodosc@system</span>
+            </div>
+            <div id="term" class="font-mono text-xs md:text-sm space-y-1 h-72 overflow-y-auto pr-1"></div>
+            <div class="progress-container mt-4"><div id="inst-bar" class="progress-bar" style="width:0%"></div></div>
+            <div class="flex justify-between items-center mt-2 text-xs text-slate-500">
+                <span id="inst-pct" class="font-mono">0%</span>
+                <button id="inst-skip" class="hover:text-slate-200 transition-colors">Pomiń ›</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== WIDOK PO 40-TCE ===================== -->
+    <div id="view-post" class="max-w-3xl w-full space-y-8 text-center hidden">
+        <header class="space-y-3 pop">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                ✔ Aktualizacja zakończona pomyślnie
+            </div>
+            <h1 class="text-5xl md:text-7xl font-bold gradient-text-gold">System 4.0</h1>
+            <p class="text-slate-400 text-sm uppercase tracking-widest">wersja LTS · Long Term Support</p>
+            <p id="wish" class="text-2xl md:text-3xl font-bold text-white pt-2">Wszystkiego najlepszego!</p>
+        </header>
+
+        <!-- Uptime -->
+        <div class="card p-8 rounded-3xl relative overflow-hidden">
+            <div class="absolute -right-4 -top-4 text-8xl opacity-5 font-bold select-none">4.0</div>
+            <h2 class="text-slate-400 uppercase tracking-widest text-xs mb-4 font-bold">Wersja 4.0 działa stabilnie od:</h2>
+            <div id="uptime" class="text-4xl md:text-6xl font-mono font-bold tracking-tighter num">—</div>
+            <p id="uptime-note" class="text-indigo-300 mt-3"></p>
+        </div>
+
+        <!-- Release notes -->
+        <section class="space-y-3">
+            <h2 class="text-slate-400 uppercase tracking-widest text-xs font-bold">Informacje o wydaniu 4.0</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                <div class="card p-5 rounded-xl border-l-4 border-l-sky-500">
+                    <p class="text-xs text-sky-300 uppercase font-bold mb-2">✨ Nowe funkcje</p>
+                    <ul class="text-sm text-slate-200 space-y-1.5 list-disc pl-4">
+                        <li>Tryb „Mam to gdzieś” — włączony domyślnie</li>
+                        <li>Asertywność+: odmawianie bez tłumaczenia się</li>
+                        <li>Wbudowany detektor bzdur (czułość: wysoka)</li>
+                        <li>Prawo do drzemki bez poczucia winy</li>
+                        <li>Natychmiastowe rozpoznawanie, na kogo szkoda czasu</li>
+                    </ul>
+                </div>
+                <div class="card p-5 rounded-xl border-l-4 border-l-rose-500">
+                    <p class="text-xs text-rose-300 uppercase font-bold mb-2">🗑️ Usunięte</p>
+                    <ul class="text-sm text-slate-200 space-y-1.5 list-disc pl-4">
+                        <li>Przejmowanie się opinią innych (przestarzałe)</li>
+                        <li>Imprezy do 5 rano (brak wsparcia sprzętowego)</li>
+                        <li>Udawanie, że wszystko jest w porządku</li>
+                        <li>Niewygodne buty „bo ładne”</li>
+                    </ul>
+                </div>
+                <div class="card p-5 rounded-xl border-l-4 border-l-emerald-500">
+                    <p class="text-xs text-emerald-300 uppercase font-bold mb-2">🛠️ Naprawione błędy</p>
+                    <ul class="text-sm text-slate-200 space-y-1.5 list-disc pl-4">
+                        <li>Wyrzuty sumienia po deserze</li>
+                        <li>Odpowiadanie „nic się nie stało”, gdy się stało</li>
+                        <li>Odkładanie przyjemności „na później”</li>
+                    </ul>
+                </div>
+                <div class="card p-5 rounded-xl border-l-4 border-l-amber-500">
+                    <p class="text-xs text-amber-300 uppercase font-bold mb-2">⚠️ Znane problemy</p>
+                    <ul class="text-sm text-slate-200 space-y-1.5 list-disc pl-4">
+                        <li>Okulary do czytania mogą pojawić się bez ostrzeżenia</li>
+                        <li>Dźwięki systemowe przy wstawaniu — to normalne</li>
+                        <li>Pamięć podręczna: wejście do pokoju bez znanego celu</li>
+                        <li>Rozpoznawanie hitów z radia tylko sprzed 2005 r.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Komunikat systemu -->
+        <div class="card p-5 rounded-xl text-left border-l-4 border-l-indigo-500">
+            <p class="text-xs text-slate-500 uppercase font-bold">Komunikat systemu 4.0</p>
+            <p id="post-tip" class="text-sm md:text-base font-medium mt-1 text-indigo-200 fade-up">…</p>
+        </div>
+
+        <!-- Do 5.0 -->
+        <section class="space-y-3">
+            <h2 class="text-slate-400 uppercase tracking-widest text-xs font-bold">Następna aktualizacja (5.0) za</h2>
+            <p class="text-3xl md:text-4xl font-mono font-bold num" id="next-days">—</p>
+            <p class="text-xs text-slate-500">Spokojnie. To aż tyle:</p>
+            <div id="grid-left-post" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+        </section>
+
+        <!-- Przebieg -->
+        <section class="space-y-3">
+            <h2 class="text-slate-400 uppercase tracking-widest text-xs font-bold">Łączny przebieg systemu</h2>
+            <div id="grid-life-post" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+        </section>
+
+        <div class="flex flex-wrap gap-3 justify-center">
+            <button id="btn-confetti" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-rose-500 text-slate-900 font-bold hover:opacity-90 transition">🎉 Jeszcze raz konfetti</button>
+            <button id="btn-replay" class="px-5 py-2.5 rounded-xl card text-slate-200 font-bold hover:bg-slate-700/70 transition">↻ Odtwórz instalację</button>
+        </div>
+
+        <footer class="text-slate-600 text-xs">
+            <p>Wersja 4.0 LTS · wsparcie gwarantowane przez kolejną dekadę · aktualizacja do 5.0 nie wymaga zgody użytkownika</p>
         </footer>
     </div>
 
     <script>
-        // KONFIGURACJA
-        const targetDate = new Date("November 28, 2026 00:00:00").getTime();
-        const birthDate = new Date("November 28, 1986").getTime(); // Założenie roku 1986 dla 40-tki w 2026
+    // ======================================================================
+    // KONFIGURACJA
+    // ======================================================================
+    const CONFIG = {
+        imie: "",                                   // np. "Kasia" → „Wszystkiego najlepszego, Kasia!” (puste = bez imienia)
+        dataAktualizacji: new Date(2026, 10, 28, 0, 0, 0), // 28.11.2026, 00:00 czasu lokalnego (miesiące od 0: 10 = listopad)
+        tetno: 70,                                  // uderzeń serca na minutę
+        oddechy: 15,                                // oddechów na minutę
+        kawyDziennie: 2
+    };
 
-        const funnyMessages = [
-            "Kalibrowanie narzekania na pogodę...",
-            "Optymalizacja dźwięków przy wstawaniu z fotela...",
-            "Instalowanie sterowników do czytania etykiet w sklepie...",
-            "Usuwanie zbędnych plików: 'Spontaniczne imprezy do rana'...",
-            "Sprawdzanie poziomu zadowolenia z zakupu nowego mopa...",
-            "Synchronizacja z lokalnym kołem gospodyń...",
-            "Aktualizacja bazy danych: 'Leki, które musisz brać'...",
-            "Pobieranie modułu: 'Wiedza o gatunkach herbat'...",
-            "Skanowanie w poszukiwaniu siwych włosów (Błąd: Limit przekroczony)..."
-        ];
+    // Tryb testowy: dodaj do adresu ?demo=10 → aktualizacja nastąpi za 10 sekund
+    const params = new URLSearchParams(location.search);
+    const DEMO = params.has('demo');
+    const TARGET = DEMO
+        ? Date.now() + (parseInt(params.get('demo'), 10) || 10) * 1000
+        : CONFIG.dataAktualizacji.getTime();
 
-        const symptoms = [
-            "Nagła ochota na herbatę",
-            "Ekscytacja nową gąbką do naczyń",
-            "Mówienie 'Oho!' przy siadaniu",
-            "Pamiętanie czasów bez internetu",
-            "Krytykowanie dzisiejszej młodzieży",
-            "Zasypianie na filmach o 21:00",
-            "Wiedza co to jest 'płyn do płukania'"
-        ];
+    const BIRTH = (() => { const d = new Date(TARGET); d.setFullYear(d.getFullYear() - 40); return d.getTime(); })();
+    const NEXT  = (() => { const d = new Date(TARGET); d.setFullYear(d.getFullYear() + 10); return d.getTime(); })();
 
-        const advices = [
-            "Kupno wygodnych kapci.",
-            "Inwestycja w maść końską.",
-            "Zapisanie się na jogę dla kręgosłupa.",
-            "Sprawdzenie promocji na witaminy.",
-            "Ograniczenie głośnej muzyki po 20:00.",
-            "Zakup poduszki ortopedycznej."
-        ];
+    const SEC = 1000, MIN = 60 * SEC, HOUR = 60 * MIN, DAY = 24 * HOUR, WEEK = 7 * DAY;
+    const YEAR = 365.2422 * DAY, MONTH = YEAR / 12, MOON = 29.530589 * DAY;
+    const EARTH_KM_S = 29.78;   // prędkość orbitalna Ziemi
 
-        let lastUpdateSec = -1;
+    // ======================================================================
+    // NARZĘDZIA
+    // ======================================================================
+    const $ = id => document.getElementById(id);
 
-        function updateCounter() {
-            const now = new Date().getTime();
-            const distance = targetDate - now;
+    function pl(n, one, few, many) {
+        n = Math.abs(Math.floor(n));
+        if (n === 1) return one;
+        const d = n % 10, h = n % 100;
+        if (d >= 2 && d <= 4 && (h < 12 || h > 14)) return few;
+        return many;
+    }
+    function fmt(n, dec = 0) {
+        return n.toLocaleString('pl-PL', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    }
+    const pad = n => String(n).padStart(2, '0');
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
-            if (distance < 0) {
-                document.getElementById("minute-counter").innerHTML = "STATUS: 4.0";
-                document.getElementById("funny-status").innerHTML = "System zaktualizowany. Witaj w klubie 40-latek!";
-                return;
-            }
+    function storeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+    function storeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 
-            // GŁÓWNY LICZNIK MINUT
-            const minutes = Math.floor(distance / (1000 * 60));
-            document.getElementById("minute-counter").innerText = minutes.toLocaleString('pl-PL');
+    let satCache = { key: '', v: 0 };
+    function saturdaysUntil(to) {
+        const now = new Date();
+        const key = to + '|' + now.toDateString();
+        if (satCache.key === key) return satCache.v;
+        const d = new Date(now); d.setHours(0, 0, 0, 0);
+        let c = 0;
+        while (d.getTime() < to) { if (d.getDay() === 6) c++; d.setDate(d.getDate() + 1); }
+        satCache = { key, v: c };
+        return c;
+    }
 
-            // PASEK SEKUND (żeby widać było ruch)
-            const secondsInMinute = Math.floor((distance % (1000 * 60)) / 1000);
-            const progressSec = ((60 - secondsInMinute) / 60) * 100;
-            document.getElementById("second-pulse").style.width = progressSec + "%";
+    // ======================================================================
+    // PRZELICZNIK — definicje jednostek
+    // f(ms, cel) → wartość; p = formy liczby [1, 2–4, 5+]; d = miejsca po przecinku; frac = forma dla ułamków
+    // ======================================================================
+    const ITEMS_LEFT = [
+        { i: '❤️', f: ms => ms / MIN * CONFIG.tetno, p: ['uderzenie serca', 'uderzenia serca', 'uderzeń serca'], n: `przy spokojnym tętnie ${CONFIG.tetno}/min` },
+        { i: '🌬️', f: ms => ms / MIN * CONFIG.oddechy, p: ['oddech', 'oddechy', 'oddechów'], n: 'głęboko, spokojnie' },
+        { i: '☕', f: ms => ms / DAY * CONFIG.kawyDziennie, p: ['kawa', 'kawy', 'kaw'], n: `przy ${CONFIG.kawyDziennie} dziennie (oficjalnie)` },
+        { i: '🗓️', f: (ms, to) => saturdaysUntil(to), p: ['weekend', 'weekendy', 'weekendów'], n: 'na ostatnie szaleństwa' },
+        { i: '📺', f: ms => ms / (45 * MIN), p: ['odcinek serialu', 'odcinki serialu', 'odcinków serialu'], n: 'po 45 min, bez przerwy na sen' },
+        { i: '🚢', f: ms => ms / (194 * MIN), p: ['seans „Titanica”', 'seanse „Titanica”', 'seansów „Titanica”'], n: 'na drzwiach i tak było miejsce' },
+        { i: '🎵', f: ms => ms / (3.5 * MIN), p: ['piosenka z lat 90.', 'piosenki z lat 90.', 'piosenek z lat 90.'], n: 'czyli same hity' },
+        { i: '🍲', f: ms => ms / (3 * HOUR), p: ['garnek rosołu', 'garnki rosołu', 'garnków rosołu'], n: 'gotowanego 3 h, jak u babci' },
+        { i: '🌍', f: ms => ms / SEC * EARTH_KM_S, p: ['kilometr', 'kilometry', 'kilometrów'], n: 'tyle przeleci Ziemia wokół Słońca' }
+    ];
 
-            // PASEK PROGRESU ŻYCIOWEGO
-            const totalDuration = targetDate - birthDate;
-            const elapsed = now - birthDate;
-            const totalProgress = (elapsed / totalDuration) * 100;
-            document.getElementById("progress-bar").style.width = totalProgress + "%";
-            document.getElementById("percent-label").innerText = totalProgress.toFixed(6) + "%";
+    const ITEMS_LIFE = [
+        { i: '🌍', f: ms => ms / SEC * EARTH_KM_S, p: ['kilometr', 'kilometry', 'kilometrów'], n: 'wokół Słońca — bez wymiany rozrządu' },
+        { i: '☀️', f: ms => ms / YEAR, d: 5, frac: 'okrążenia Słońca', n: 'licznik kręci się na żywo' },
+        { i: '❤️', f: ms => ms / MIN * CONFIG.tetno, p: ['uderzenie serca', 'uderzenia serca', 'uderzeń serca'], n: 'i nadal bije dla bliskich' },
+        { i: '🌬️', f: ms => ms / MIN * CONFIG.oddechy, p: ['oddech', 'oddechy', 'oddechów'], n: 'w tym sporo westchnień' },
+        { i: '😴', f: ms => ms / 3 / YEAR, d: 1, frac: 'roku snu', n: '⅓ życia w trybie uśpienia' },
+        { i: '🍽️', f: ms => ms / DAY * 3, p: ['posiłek', 'posiłki', 'posiłków'], n: 'nie licząc podjadania' },
+        { i: '🌕', f: ms => ms / MOON, p: ['pełnia Księżyca', 'pełnie Księżyca', 'pełni Księżyca'], n: 'i ani razu wilkołak' },
+        { i: '🗓️', f: ms => ms / WEEK, p: ['weekend', 'weekendy', 'weekendów'], n: 'zawsze za krótkich' },
+        { i: '💇‍♀️', f: ms => ms / MONTH * 1.25 / 100, d: 1, frac: 'metra włosów', n: 'gdyby nigdy ich nie obcinać' }
+    ];
 
-            // ROTACJA KOMUNIKATÓW (Co 20 sekund)
-            const currentSec = new Date().getSeconds();
-            if (currentSec % 20 === 0 && currentSec !== lastUpdateSec) {
-                lastUpdateSec = currentSec;
-                
-                const randomMsg = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
-                const randomSymptom = symptoms[Math.floor(Math.random() * symptoms.length)];
-                const randomAdvice = advices[Math.floor(Math.random() * advices.length)];
-                
-                document.getElementById("funny-status").innerText = randomMsg;
-                document.getElementById("symptom-text").innerText = randomSymptom;
-                document.getElementById("advice-text").innerText = randomAdvice;
-            }
+    function buildGrid(el, items) {
+        el.innerHTML = items.map((it, idx) => `
+            <div class="card p-4 rounded-xl text-left">
+                <div class="text-2xl mb-1">${it.i}</div>
+                <div class="font-mono text-base md:text-xl font-bold num" data-v="${idx}">—</div>
+                <div class="text-sm text-slate-300 leading-tight" data-l="${idx}"></div>
+                <div class="text-[11px] text-slate-500 italic mt-1 leading-tight">${it.n}</div>
+            </div>`).join('');
+        return items.map((it, idx) => ({
+            it, v: el.querySelector(`[data-v="${idx}"]`), l: el.querySelector(`[data-l="${idx}"]`)
+        }));
+    }
+
+    function updateGrid(cells, ms, to) {
+        ms = Math.max(0, ms);
+        for (const c of cells) {
+            const raw = c.it.f(ms, to);
+            const d = c.it.d || 0;
+            const val = d ? raw : Math.floor(raw);
+            c.v.textContent = fmt(val, d);
+            c.l.textContent = d ? c.it.frac : pl(val, ...c.it.p);
         }
+    }
 
-        // Pierwsze wywołanie i interwał
-        updateCounter();
-        setInterval(updateCounter, 100); // Częstsze odświeżanie dla płynności pasków
+    // ======================================================================
+    // WIDOK PRZED — główny licznik z przełączaniem jednostek
+    // ======================================================================
+    const UNITS = [
+        { div: MIN,  p: ['minuta', 'minuty', 'minut'], s: 'cierpliwości' },
+        { div: SEC,  p: ['sekunda', 'sekundy', 'sekund'], s: 'odliczania' },
+        { div: HOUR, p: ['godzina', 'godziny', 'godzin'], s: 'spokoju' },
+        { div: DAY,  p: ['dzień', 'dni', 'dni'], s: 'beztroski' },
+        { div: MIN / CONFIG.tetno, p: ['uderzenie serca', 'uderzenia serca', 'uderzeń serca'], s: '' },
+        { div: DAY / CONFIG.kawyDziennie, p: ['kawa', 'kawy', 'kaw'], s: 'do wypicia' }
+    ];
+    let unitIdx = 0;
+
+    const funnyMessages = [
+        "Kalibrowanie narzekania na pogodę...",
+        "Optymalizacja dźwięków przy wstawaniu z fotela...",
+        "Instalowanie sterowników do czytania etykiet w sklepie...",
+        "Usuwanie zbędnych plików: „Spontaniczne imprezy do rana”...",
+        "Sprawdzanie poziomu zadowolenia z zakupu nowego mopa...",
+        "Synchronizacja z lokalnym kołem gospodyń...",
+        "Pobieranie modułu: „Wiedza o gatunkach herbat”...",
+        "Skanowanie w poszukiwaniu siwych włosów (błąd: limit przekroczony)...",
+        "Indeksowanie wspomnień: kasety magnetofonowe i ołówek...",
+        "Kompresja listy rzeczy, które „kiedyś się zrobi”..."
+    ];
+    const symptoms = [
+        "Nagła ochota na herbatę",
+        "Ekscytacja nową gąbką do naczyń",
+        "Mówienie „Oho!” przy siadaniu",
+        "Pamiętanie czasów bez internetu",
+        "Krytykowanie dzisiejszej młodzieży",
+        "Zasypianie na filmach o 21:00",
+        "Wiedza, co to jest płyn do płukania",
+        "Sprawdzanie prognozy pogody 3 razy dziennie"
+    ];
+    const advices = [
+        "Kupno wygodnych kapci.",
+        "Inwestycja w maść końską.",
+        "Zapisanie się na jogę dla kręgosłupa.",
+        "Sprawdzenie promocji na witaminy.",
+        "Ograniczenie głośnej muzyki po 20:00.",
+        "Zakup poduszki ortopedycznej.",
+        "Ostatni szalony weekend wersji 3.x."
+    ];
+    const postTips = [
+        "Wiek to tylko numer wersji. Liczy się, co jest zainstalowane.",
+        "Drzemka po obiedzie nie jest błędem. To funkcja.",
+        "Kompatybilność wsteczna zachowana: nadal można tańczyć do hitów z lat 90.",
+        "Wykryto nadmiar doświadczenia. Zalecenie: dzielić się nim wyłącznie na życzenie.",
+        "System działa szybciej po kawie. Potwierdzono w testach.",
+        "Tryb „Mam to gdzieś” zaoszczędził dziś mnóstwo energii.",
+        "Synchronizacja z przyjaciółmi przebiega bez zakłóceń.",
+        "Wydajność systemu: lepsza niż w wersji 3.x. Bez dyskusji."
+    ];
+
+    function setFade(el, text) {
+        el.classList.remove('fade-up'); void el.offsetWidth;
+        el.textContent = text; el.classList.add('fade-up');
+    }
+    function rotatePre() {
+        setFade($('funny-status'), pick(funnyMessages));
+        setFade($('symptom-text'), pick(symptoms));
+        setFade($('advice-text'), pick(advices));
+    }
+
+    let cellsLeftPre, cellsLifePre, cellsLeftPost, cellsLifePost;
+
+    function updatePre(now) {
+        const distance = TARGET - now;
+        const u = UNITS[unitIdx];
+        const val = Math.floor(distance / u.div);
+        $('minute-counter').textContent = fmt(val);
+        $('unit-label').textContent = (pl(val, ...u.p) + ' ' + u.s).trim();
+
+        const secondsInMinute = Math.floor((distance % MIN) / SEC);
+        $('second-pulse').style.width = ((60 - secondsInMinute) / 60 * 100) + '%';
+
+        const total = (now - BIRTH) / (TARGET - BIRTH) * 100;
+        $('progress-bar').style.width = Math.min(100, total) + '%';
+        $('percent-label').textContent = total.toFixed(6) + '%';
+
+        updateGrid(cellsLeftPre, distance, TARGET);
+        updateGrid(cellsLifePre, now - BIRTH, TARGET);
+    }
+
+    // ======================================================================
+    // INSTALATOR
+    // ======================================================================
+    function installLines() {
+        const days = Math.round((TARGET - BIRTH) / DAY);
+        return [
+            ['cmd',  '$ sudo upgrade mlodosc --to=4.0 --no-regrets'],
+            ['info', 'Odczyt bieżącej wersji: 3.9.12 (stabilna, choć czasem marudna)'],
+            ['ok',   'Kopia zapasowa wspomnień: lata 80., 90. i „to były czasy” … 100%'],
+            ['ok',   'Odinstalowywanie: przejmowanie-sie-opinia-innych'],
+            ['ok',   'Odinstalowywanie: imprezy-do-rana (brak wsparcia sprzętowego)'],
+            ['warn', 'Wykryto siwe włosy: liczba utajniona zgodnie z RODO'],
+            ['ok',   'Instalowanie: dystans-do-siebie 4.0'],
+            ['ok',   'Instalowanie: asertywnosc-plus 4.0'],
+            ['ok',   'Instalowanie: tryb-mam-to-gdzies (domyślnie włączony)'],
+            ['ok',   `Kompilowanie mądrości życiowej z ${fmt(days)} dni doświadczeń…`],
+            ['warn', 'Sterownik „okulary do czytania” dostępny jako aktualizacja opcjonalna'],
+            ['ok',   'Kalibracja poczucia humoru … bez zmian (było już idealne)'],
+            ['ok',   'Weryfikacja urody … test zaliczony, nie wymaga poprawek'],
+            ['info', 'Restart systemu za 3… 2… 1…', 1600]
+        ];
+    }
+    const TAGS = {
+        cmd:  '<span class="text-slate-100">',
+        info: '<span class="text-sky-400">[INFO]</span> <span class="text-slate-300">',
+        ok:   '<span class="text-emerald-400">[ OK ]</span> <span class="text-slate-300">',
+        warn: '<span class="text-amber-400">[WARN]</span> <span class="text-slate-300">'
+    };
+
+    let state = 'pre';
+    let instTimers = [];
+
+    function startInstaller() {
+        state = 'installing';
+        $('view-pre').classList.add('hidden');
+        $('view-post').classList.add('hidden');
+        $('installer').classList.remove('hidden');
+        $('term').innerHTML = '';
+        const bar = $('inst-bar');
+        bar.style.transition = 'none'; bar.style.width = '0%'; void bar.offsetWidth; bar.style.transition = '';
+        $('inst-pct').textContent = '0%';
+
+        const lines = installLines();
+        let t = 500;
+        lines.forEach((ln, i) => {
+            instTimers.push(setTimeout(() => {
+                const div = document.createElement('div');
+                div.className = 'fade-up';
+                div.innerHTML = TAGS[ln[0]] + ln[1] + '</span>';
+                $('term').appendChild(div);
+                $('term').scrollTop = $('term').scrollHeight;
+                const pct = Math.round((i + 1) / lines.length * 100);
+                bar.style.width = pct + '%';
+                $('inst-pct').textContent = pct + '%';
+            }, t));
+            t += ln[2] || 750;
+        });
+        instTimers.push(setTimeout(finishInstaller, t + 600));
+    }
+
+    function finishInstaller() {
+        instTimers.forEach(clearTimeout);
+        instTimers = [];
+        $('installer').classList.add('hidden');
+        showPost();
+        celebrate(4000);
+        if (!DEMO) storeSet('upgrade40_seen', '1');
+    }
+
+    // ======================================================================
+    // WIDOK PO
+    // ======================================================================
+    function showPost() {
+        state = 'post';
+        $('view-pre').classList.add('hidden');
+        const v = $('view-post');
+        v.classList.remove('hidden');
+        v.querySelector('header').classList.remove('pop'); void v.offsetWidth;
+        v.querySelector('header').classList.add('pop');
+        $('wish').textContent = CONFIG.imie ? `Wszystkiego najlepszego, ${CONFIG.imie}!` : 'Wszystkiego najlepszego!';
+        setFade($('post-tip'), pick(postTips));
+        updatePost(Date.now());
+    }
+
+    function updatePost(now) {
+        const up = Math.max(0, now - TARGET);
+        const d = Math.floor(up / DAY);
+        const h = Math.floor(up % DAY / HOUR), m = Math.floor(up % HOUR / MIN), s = Math.floor(up % MIN / SEC);
+        $('uptime').textContent = `${fmt(d)} ${pl(d, 'dzień', 'dni', 'dni')} ${pad(h)}:${pad(m)}:${pad(s)}`;
+        $('uptime-note').textContent = d < 1
+            ? '🎂 Premiera dziś! Pierwsza doba na nowej wersji.'
+            : `${fmt(d)} ${pl(d, 'dzień', 'dni', 'dni')} stabilnej pracy, zero reklamacji.`;
+
+        const left = NEXT - now;
+        const ld = Math.floor(left / DAY);
+        $('next-days').textContent = `${fmt(ld)} ${pl(ld, 'dzień', 'dni', 'dni')}`;
+        updateGrid(cellsLeftPost, left, NEXT);
+        updateGrid(cellsLifePost, now - BIRTH, NEXT);
+    }
+
+    function celebrate(dur = 3000) {
+        if (typeof confetti !== 'function') return;
+        confetti({ particleCount: 160, spread: 100, origin: { y: 0.6 } });
+        const end = Date.now() + dur;
+        (function frame() {
+            confetti({ particleCount: 4, angle: 60, spread: 60, origin: { x: 0 } });
+            confetti({ particleCount: 4, angle: 120, spread: 60, origin: { x: 1 } });
+            if (Date.now() < end) requestAnimationFrame(frame);
+        })();
+    }
+
+    // ======================================================================
+    // START
+    // ======================================================================
+    cellsLeftPre  = buildGrid($('grid-left-pre'),  ITEMS_LEFT);
+    cellsLifePre  = buildGrid($('grid-life-pre'),  ITEMS_LIFE);
+    cellsLeftPost = buildGrid($('grid-left-post'), ITEMS_LEFT);
+    cellsLifePost = buildGrid($('grid-life-post'), ITEMS_LIFE);
+
+    $('main-counter-card').addEventListener('click', () => {
+        unitIdx = (unitIdx + 1) % UNITS.length;
+        updatePre(Date.now());
+    });
+    $('inst-skip').addEventListener('click', finishInstaller);
+    $('btn-confetti').addEventListener('click', () => celebrate(2500));
+    $('btn-replay').addEventListener('click', startInstaller);
+
+    if (DEMO) $('pre-footer').textContent = '🧪 Tryb demo — aktualizacja za chwilę.';
+
+    if (Date.now() >= TARGET) {
+        if (storeGet('upgrade40_seen') && !DEMO) showPost();
+        else startInstaller();
+    } else {
+        $('view-pre').classList.remove('hidden');
+        rotatePre();
+        updatePre(Date.now());
+    }
+
+    setInterval(() => { if (state === 'pre') rotatePre(); }, 8000);
+    setInterval(() => { if (state === 'post') setFade($('post-tip'), pick(postTips)); }, 10000);
+
+    setInterval(() => {
+        const now = Date.now();
+        if (state === 'pre') {
+            if (now >= TARGET) startInstaller();
+            else updatePre(now);
+        } else if (state === 'post') {
+            updatePost(now);
+        }
+    }, 100);
     </script>
 </body>
 </html>
